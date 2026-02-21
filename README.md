@@ -1,54 +1,54 @@
-# 💰 Retirement Plan - Smart Auto-Investment Platform
+# Retirement Plan - Auto-Investment Platform
 
-> **A production-grade REST API that helps users automate retirement savings by analyzing spending patterns, applying investment rules, and recommending the optimal NPS vs Index Fund strategy.**
+A production-grade REST API that helps users automate retirement savings by analyzing spending patterns, applying investment rules, and recommending the optimal NPS vs Index Fund strategy.
 
-Built for the **BlackRock Hackathon Challenge** — turning everyday expenses into smart retirement investments.
+Built for the BlackRock Hackathon Challenge.
 
 ---
 
-## 🎯 What Problem Does This Solve?
+## Problem Statement
 
-Most people know they should save for retirement but don't know:
-- **How much** they can actually save from daily expenses
-- **Where** to invest — NPS (safe + tax benefit) or Index Fund (higher growth)
-- **What** temporal rules affect their savings
-- Whether they're **financially ready** to start investing
+Most people know they should save for retirement but lack clarity on:
+- How much they can realistically save from daily expenses
+- Where to invest -- NPS (stable + tax benefit) or Index Fund (higher growth)
+- What temporal rules affect their savings
+- Whether they are financially ready to start investing
 
 This platform answers all of these by analyzing real transaction data and providing actionable, personalized recommendations.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   REST API (Port 5477)                  │
-│              /blackrock/challenge/v1/*                   │
-├──────────┬──────────┬───────────┬───────────┬───────────┤
-│  Parse   │ Validate │  Filter   │  Returns  │  System   │
-│ Expenses │  Rules   │ Temporal  │ NPS/Index │  Health   │
-│          │          │ Q / P / K │ + Compare │           │
-├──────────┴──────────┴───────────┴───────────┴───────────┤
-│              Service Layer (Business Logic)              │
-│  Transaction │ Validation │ Filter │ Investment│ Summary │
-├─────────────────────────────────────────────────────────┤
-│                    Java 17 + Spring Boot 3.2             │
-└─────────────────────────────────────────────────────────┘
++----------------------------------------------------------+
+|                   REST API (Port 5477)                   |
+|              /blackrock/challenge/v1/*                    |
++----------+----------+-----------+-----------+------------+
+|  Parse   | Validate |  Filter   |  Returns  |   System   |
+| Expenses |  Rules   | Temporal  | NPS/Index |   Health   |
+|          |          | Q / P / K | + Compare |            |
++----------+----------+-----------+-----------+------------+
+|              Service Layer (Business Logic)               |
+|  Transaction | Validation | Filter | Investment | Summary |
++----------------------------------------------------------+
+|                   Java 17 + Spring Boot 3.2               |
++----------------------------------------------------------+
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Java | 17 (Eclipse Temurin) | Runtime |
-| Spring Boot | 3.2.3 | REST Framework |
-| Maven | 3.9+ (wrapper included) | Build Tool |
-| Docker | Multi-stage Alpine | Containerization |
-| JUnit 5 | 5.10+ | Testing |
+| Technology   | Version              | Purpose           |
+|--------------|----------------------|-------------------|
+| Java         | 17 (Eclipse Temurin) | Runtime           |
+| Spring Boot  | 3.2.3                | REST Framework    |
+| Maven        | 3.9+ (wrapper incl.) | Build Tool        |
+| Docker       | Multi-stage Alpine   | Containerization  |
+| JUnit 5      | 5.10+                | Testing           |
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Java 17+ or Docker
@@ -59,7 +59,7 @@ This platform answers all of these by analyzing real transaction data and provid
 git clone https://github.com/Abhi7033/Retirement-plan.git
 cd Retirement-plan
 
-# Build & Run
+# Build and Run
 ./mvnw clean package -DskipTests
 java -jar target/retirement-plan-1.0.0.jar
 ```
@@ -73,19 +73,19 @@ docker build -t blk-hacking-ind-abhishek-anand .
 docker run -d -p 5477:5477 blk-hacking-ind-abhishek-anand
 ```
 
-The API is live at **http://localhost:5477**
+The API is available at **http://localhost:5477**
 
-### Verify it's running
+### Verify
 ```bash
 curl http://localhost:5477/blackrock/challenge/v1/health
 ```
 
 ---
 
-## 🧪 Run Tests
+## Running Tests
 
 ```bash
-# Run all 36 unit tests
+# Run all 55 unit tests
 ./mvnw test
 
 # Run a specific test class
@@ -93,23 +93,25 @@ curl http://localhost:5477/blackrock/challenge/v1/health
 ```
 
 Test coverage includes:
-- **TransactionServiceTest** — Parsing, ceiling rounding, timestamp truncation (7 tests)
-- **ValidationServiceTest** — Negative amounts, duplicates, max limits (7 tests)
-- **TemporalFilterServiceTest** — Q/P/K period logic, edge cases (9 tests)
-- **InvestmentServiceTest** — NPS/Index returns, profit, tax benefit (9 tests)
-- **PerformanceServiceTest** — Uptime format, memory, threads (4 tests)
+- **TransactionServiceTest** -- Parsing, ceiling rounding, timestamp truncation (7 tests)
+- **ValidationServiceTest** -- Negative amounts, duplicates, max limits, ceiling/remanent consistency (11 tests)
+- **TemporalFilterServiceTest** -- Q/P/K period logic, edge cases (9 tests)
+- **InvestmentServiceTest** -- NPS/Index returns, profit, tax benefit (9 tests)
+- **PerformanceServiceTest** -- Uptime format, memory, threads (4 tests)
+- **SummaryServiceTest** -- Spending analysis, readiness scoring (8 tests)
+- **CompareServiceTest** -- NPS vs Index comparison, risk profiling (7 tests)
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 Base URL: `http://localhost:5477/blackrock/challenge/v1`
 
 ### Core Endpoints
 
-#### 1️⃣ Parse Expenses → `POST /transactions:parse`
+#### 1. Parse Expenses -- POST /transactions:parse
 
-Converts raw expenses into investment-ready transactions. Rounds each expense up to the next ₹100 (ceiling) and calculates the spare change (remanent) that can be auto-invested.
+Converts raw expenses into investment-ready transactions. Rounds each expense up to the next 100 (ceiling) and calculates the spare change (remanent) that can be auto-invested.
 
 ```json
 // Request
@@ -120,7 +122,7 @@ Converts raw expenses into investment-ready transactions. Rounds each expense up
   ]
 }
 
-// Response — seconds truncated, ceiling = next ₹100 multiple
+// Response -- seconds truncated, ceiling = next 100 multiple
 {
   "transactions": [
     { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
@@ -129,16 +131,17 @@ Converts raw expenses into investment-ready transactions. Rounds each expense up
 }
 ```
 
-**Real-world analogy:** Like a digital piggy bank — spend ₹150.75, round up to ₹200, auto-save ₹49.25.
-
 ---
 
-#### 2️⃣ Validate Transactions → `POST /transactions:validator`
+#### 2. Validate Transactions -- POST /transactions:validator
 
 Applies real-world business rules to ensure data integrity:
-- ❌ Negative amounts → rejected
-- ❌ Duplicate timestamps → second occurrence rejected
-- ❌ Amount ≥ ₹5,00,000 → rejected (unrealistic for daily expense)
+- Negative amounts are rejected
+- Duplicate timestamps -- second occurrence is rejected
+- Amount >= 5,00,000 -- rejected (unrealistic for daily expense)
+- Ceiling < amount -- rejected (cannot round down)
+- Ceiling not a multiple of 100 -- rejected
+- Remanent != ceiling - amount -- rejected (data inconsistency)
 
 ```json
 // Request
@@ -150,14 +153,14 @@ Applies real-world business rules to ensure data integrity:
 
 ---
 
-#### 3️⃣ Filter with Temporal Rules → `POST /transactions:filter`
+#### 3. Filter with Temporal Rules -- POST /transactions:filter
 
 Applies time-based investment rules:
 - **Q-periods** (fixed override): Replace remanent with a fixed amount during specific periods
 - **P-periods** (extra boost): Add bonus savings during promotional windows
 - **K-periods** (grouping): Group transactions into investment windows
 
-Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are **kept as valid** — they represent real transactions with zero savings, just like in the real world.
+Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are kept as valid -- they represent real transactions with zero savings.
 
 ```json
 // Request
@@ -169,7 +172,7 @@ Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are **k
   "transactions": [...]
 }
 
-// Response — includes inKPeriod flag for grouping
+// Response -- includes inKPeriod flag for grouping
 {
   "valid": [
     { "date": "...", "amount": 150.75, "ceiling": 200.0, "remanent": 74.25, "inKPeriod": true }
@@ -180,14 +183,14 @@ Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are **k
 
 ---
 
-#### 4️⃣ NPS Returns → `POST /returns:nps`
+#### 4. NPS Returns -- POST /returns:nps
 
 Calculates projected National Pension Scheme returns:
-- **Rate:** 7.11% annual compound interest
-- **Inflation adjusted:** Returns divided by (1 + inflation)^years
-- **Tax benefit:** Deduction under Section 80CCD (min of invested, 10% income, ₹2L)
-- **Tax slabs:** 0-7L: 0%, 7-10L: 10%, 10-12L: 15%, 12-15L: 20%, 15L+: 30%
-- **Investment horizon:** max(60 - age, 5) years
+- Rate: 7.11% annual compound interest
+- Inflation adjusted: Returns divided by (1 + inflation)^years
+- Tax benefit: Deduction under Section 80CCD (min of invested, 10% income, 2L)
+- Tax slabs: 0-7L: 0%, 7-10L: 10%, 10-12L: 15%, 12-15L: 20%, 15L+: 30%
+- Investment horizon: max(60 - age, 5) years
 
 ```json
 // Request
@@ -205,25 +208,25 @@ Calculates projected National Pension Scheme returns:
 
 ---
 
-#### 5️⃣ Index Fund Returns → `POST /returns:index`
+#### 5. Index Fund Returns -- POST /returns:index
 
 Calculates projected NIFTY 50 Index Fund returns:
-- **Rate:** 14.49% annual compound interest
-- **Inflation adjusted:** Same as NPS
-- **No tax benefit** (but higher market returns)
+- Rate: 14.49% annual compound interest
+- Inflation adjusted: Same as NPS
+- No tax benefit (but higher market returns)
 
 Same request/response format as NPS.
 
 ---
 
-### 🌟 Innovation Endpoints
+### Innovation Endpoints
 
-#### 6️⃣ Compare NPS vs Index → `POST /returns:compare`
+#### 6. Compare NPS vs Index -- POST /returns:compare
 
-**The killer feature.** Side-by-side comparison with personalized recommendation based on:
-- **Age** → determines risk profile (Aggressive / Moderate / Conservative)
-- **Income** → higher earners benefit more from NPS tax deductions
-- **Returns** → actual projected numbers for both options
+Side-by-side comparison with personalized recommendation based on:
+- **Age** -- determines risk profile (Aggressive / Moderate / Conservative)
+- **Income** -- higher earners benefit more from NPS tax deductions
+- **Returns** -- actual projected numbers for both options
 
 ```json
 // Response (abbreviated)
@@ -245,9 +248,9 @@ Same request/response format as NPS.
 
 ---
 
-#### 7️⃣ Transaction Summary → `POST /transactions:summary`
+#### 7. Transaction Summary -- POST /transactions:summary
 
-Analyzes spending behavior and calculates an **Investment Readiness Score** (0-100):
+Analyzes spending behavior and calculates an Investment Readiness Score (0-100):
 
 ```json
 // Response
@@ -261,14 +264,14 @@ Analyzes spending behavior and calculates an **Investment Readiness Score** (0-1
   "investmentReadinessScore": 70,
   "investmentReadinessLabel": "Good - Can start regular investments",
   "tips": [
-    "You're in great shape! Consider splitting investments between NPS and Index Funds."
+    "Consider splitting investments between NPS and Index Funds."
   ]
 }
 ```
 
 ---
 
-#### 8️⃣ Health Check → `GET /health`
+#### 8. Health Check -- GET /health
 
 Liveness probe for monitoring and container orchestration.
 
@@ -278,7 +281,7 @@ Liveness probe for monitoring and container orchestration.
 
 ---
 
-#### 9️⃣ Performance Metrics → `GET /performance`
+#### 9. Performance Metrics -- GET /performance
 
 System metrics: uptime, heap memory (MB), active threads.
 
@@ -288,7 +291,7 @@ System metrics: uptime, heap memory (MB), active threads.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -298,18 +301,18 @@ src/
 │   │   ├── ReturnsController.java        # nps, index, compare
 │   │   └── PerformanceController.java    # performance, health
 │   ├── service/
-│   │   ├── TransactionService.java       # Expense → Transaction conversion
+│   │   ├── TransactionService.java       # Expense to Transaction conversion
 │   │   ├── ValidationService.java        # Business rule validation
 │   │   ├── TemporalFilterService.java    # Q/P/K temporal constraint engine
 │   │   ├── InvestmentService.java        # NPS, Index, Compare calculations
-│   │   ├── SummaryService.java           # Spending insights & readiness score
+│   │   ├── SummaryService.java           # Spending insights and readiness score
 │   │   └── PerformanceService.java       # JMX system metrics
 │   ├── model/                            # Domain entities
 │   └── dto/                              # Request/Response DTOs
-└── test/java/                            # 36+ unit tests
+└── test/java/                            # 55 unit tests
 ```
 
-## 🐳 Docker
+## Docker
 
 - **Image:** `blk-hacking-ind-abhishek-anand`
 - **Port:** `5477`
@@ -322,7 +325,7 @@ docker run -d -p 5477:5477 blk-hacking-ind-abhishek-anand
 
 ---
 
-## 👤 Author
+## Author
 
 **Abhishek Anand**
 GitHub: [@Abhi7033](https://github.com/Abhi7033)
