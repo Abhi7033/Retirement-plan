@@ -1,187 +1,328 @@
-# Retirement Plan - Auto Investment API
+# 💰 Retirement Plan - Smart Auto-Investment Platform
 
-A Spring Boot REST API for automating retirement savings calculations, built for the BlackRock Hackathon Challenge. The system parses expenses, validates transactions, applies temporal constraints, and computes projected returns for NPS and Index Fund investments.
+> **A production-grade REST API that helps users automate retirement savings by analyzing spending patterns, applying investment rules, and recommending the optimal NPS vs Index Fund strategy.**
 
-## Tech Stack
+Built for the **BlackRock Hackathon Challenge** — turning everyday expenses into smart retirement investments.
 
-- **Java 17** (Eclipse Temurin)
-- **Spring Boot 3.2.3**
-- **Maven** (with wrapper included)
-- **Docker** (multi-stage Alpine build)
+---
 
-## Prerequisites
+## 🎯 What Problem Does This Solve?
 
-- Java 17+ (`java -version`)
-- Maven 3.6+ (`mvn -version`) — *or use the included Maven wrapper*
-- Docker (optional, for containerized deployment)
+Most people know they should save for retirement but don't know:
+- **How much** they can actually save from daily expenses
+- **Where** to invest — NPS (safe + tax benefit) or Index Fund (higher growth)
+- **What** temporal rules affect their savings
+- Whether they're **financially ready** to start investing
 
-## Project Structure
+This platform answers all of these by analyzing real transaction data and providing actionable, personalized recommendations.
+
+---
+
+## 🏗️ Architecture
 
 ```
-src/
-├── main/java/com/blackrock/retirement/
-│   ├── controller/
-│   │   ├── TransactionController.java    # /transactions:parse, :validator, :filter
-│   │   ├── ReturnsController.java        # /returns:nps, /returns:index
-│   │   └── PerformanceController.java    # /performance
-│   ├── service/
-│   │   ├── TransactionService.java       # Expense parsing & ceiling calculation
-│   │   ├── ValidationService.java        # Transaction validation rules
-│   │   ├── TemporalFilterService.java    # Q/P/K period temporal constraints
-│   │   ├── InvestmentService.java        # NPS & Index Fund return calculations
-│   │   └── PerformanceService.java       # JMX-based system metrics
-│   ├── model/                            # Domain entities
-│   └── dto/                              # Request/Response DTOs
-└── test/java/com/blackrock/retirement/
-    └── service/                          # 36 unit tests across 5 test classes
+┌─────────────────────────────────────────────────────────┐
+│                   REST API (Port 5477)                  │
+│              /blackrock/challenge/v1/*                   │
+├──────────┬──────────┬───────────┬───────────┬───────────┤
+│  Parse   │ Validate │  Filter   │  Returns  │  System   │
+│ Expenses │  Rules   │ Temporal  │ NPS/Index │  Health   │
+│          │          │ Q / P / K │ + Compare │           │
+├──────────┴──────────┴───────────┴───────────┴───────────┤
+│              Service Layer (Business Logic)              │
+│  Transaction │ Validation │ Filter │ Investment│ Summary │
+├─────────────────────────────────────────────────────────┤
+│                    Java 17 + Spring Boot 3.2             │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Configuration
+## 🛠️ Tech Stack
 
-The application runs on **port 5477** by default. To change it, edit `src/main/resources/application.properties`:
+| Technology | Version | Purpose |
+|---|---|---|
+| Java | 17 (Eclipse Temurin) | Runtime |
+| Spring Boot | 3.2.3 | REST Framework |
+| Maven | 3.9+ (wrapper included) | Build Tool |
+| Docker | Multi-stage Alpine | Containerization |
+| JUnit 5 | 5.10+ | Testing |
 
-```properties
-server.port=5477
-spring.application.name=retirement-plan
-```
+---
 
-## Build & Run
+## 🚀 Quick Start
 
-### Using Maven
+### Prerequisites
+- Java 17+ or Docker
 
+### Option 1: Run with Java
 ```bash
-# Build the project
-mvn clean package -DskipTests
+# Clone
+git clone https://github.com/Abhi7033/Retirement-plan.git
+cd Retirement-plan
 
-# Run the application
-java -jar target/retirement-plan-1.0.0.jar
-```
-
-### Using Maven Wrapper (no Maven installation needed)
-
-```bash
+# Build & Run
 ./mvnw clean package -DskipTests
 java -jar target/retirement-plan-1.0.0.jar
 ```
 
-### Using Docker
-
+### Option 2: Run with Docker
 ```bash
-# Build the Docker image
+# Build
 docker build -t blk-hacking-ind-abhishek-anand .
 
-# Run the container
+# Run
 docker run -d -p 5477:5477 blk-hacking-ind-abhishek-anand
 ```
 
-The API will be available at `http://localhost:5477`
+The API is live at **http://localhost:5477**
 
-## Run Tests
-
+### Verify it's running
 ```bash
-# Run all tests
-mvn test
-
-# Run a specific test class
-mvn test -Dtest=TransactionServiceTest
-
-# Run with Maven wrapper
-./mvnw test
+curl http://localhost:5477/blackrock/challenge/v1/health
 ```
 
-## API Endpoints
+---
 
-All endpoints are prefixed with `/blackrock/challenge/v1`.
+## 🧪 Run Tests
 
-### 1. Parse Expenses
-**POST** `/blackrock/challenge/v1/transactions:parse`
+```bash
+# Run all 36 unit tests
+./mvnw test
 
-Converts raw expenses into transactions by rounding amounts up to the next multiple of 100 (ceiling) and calculating the remanent (difference).
+# Run a specific test class
+./mvnw test -Dtest=InvestmentServiceTest
+```
+
+Test coverage includes:
+- **TransactionServiceTest** — Parsing, ceiling rounding, timestamp truncation (7 tests)
+- **ValidationServiceTest** — Negative amounts, duplicates, max limits (7 tests)
+- **TemporalFilterServiceTest** — Q/P/K period logic, edge cases (9 tests)
+- **InvestmentServiceTest** — NPS/Index returns, profit, tax benefit (9 tests)
+- **PerformanceServiceTest** — Uptime format, memory, threads (4 tests)
+
+---
+
+## 📡 API Reference
+
+Base URL: `http://localhost:5477/blackrock/challenge/v1`
+
+### Core Endpoints
+
+#### 1️⃣ Parse Expenses → `POST /transactions:parse`
+
+Converts raw expenses into investment-ready transactions. Rounds each expense up to the next ₹100 (ceiling) and calculates the spare change (remanent) that can be auto-invested.
 
 ```json
 // Request
 {
   "expenses": [
-    { "timestamp": "2024-02-15 12:30:45", "amount": 150.75 }
+    { "timestamp": "2024-02-15 12:30:45", "amount": 150.75 },
+    { "timestamp": "2024-03-10 09:00:00", "amount": 620.00 }
   ]
 }
 
-// Response
+// Response — seconds truncated, ceiling = next ₹100 multiple
 {
   "transactions": [
-    { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 }
+    { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
+    { "date": "2024-03-10 09:00:00", "amount": 620.0, "ceiling": 700.0, "remanent": 80.0 }
   ]
 }
 ```
 
-### 2. Validate Transactions
-**POST** `/blackrock/challenge/v1/transactions:validator`
+**Real-world analogy:** Like a digital piggy bank — spend ₹150.75, round up to ₹200, auto-save ₹49.25.
 
-Validates transactions against business rules: no negative amounts, no duplicates, amount < 500,000.
+---
+
+#### 2️⃣ Validate Transactions → `POST /transactions:validator`
+
+Applies real-world business rules to ensure data integrity:
+- ❌ Negative amounts → rejected
+- ❌ Duplicate timestamps → second occurrence rejected
+- ❌ Amount ≥ ₹5,00,000 → rejected (unrealistic for daily expense)
 
 ```json
 // Request
 { "wage": 50000, "transactions": [...] }
 
 // Response
-{ "valid": [...], "invalid": [...] }
+{ "valid": [...], "invalid": [{ "date": "...", "amount": -50, "message": "Negative amounts are not allowed" }] }
 ```
 
-### 3. Filter Transactions
-**POST** `/blackrock/challenge/v1/transactions:filter`
+---
 
-Applies temporal constraints (Q-periods for fixed override, P-periods for additive extras, K-periods for grouping) to transactions.
+#### 3️⃣ Filter with Temporal Rules → `POST /transactions:filter`
+
+Applies time-based investment rules:
+- **Q-periods** (fixed override): Replace remanent with a fixed amount during specific periods
+- **P-periods** (extra boost): Add bonus savings during promotional windows
+- **K-periods** (grouping): Group transactions into investment windows
+
+Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are **kept as valid** — they represent real transactions with zero savings, just like in the real world.
 
 ```json
 // Request
-{ "wage": 50000, "q": [...], "p": [...], "k": [...], "transactions": [...] }
+{
+  "wage": 50000,
+  "q": [{ "fixed": 0, "start": "2024-02-01 00:00", "end": "2024-03-01 00:00" }],
+  "p": [{ "extra": 25, "start": "2024-01-01 00:00", "end": "2024-04-01 00:00" }],
+  "k": [{ "start": "2024-01-01 00:00", "end": "2024-06-01 00:00" }],
+  "transactions": [...]
+}
 
-// Response
-{ "valid": [...], "invalid": [...] }
+// Response — includes inKPeriod flag for grouping
+{
+  "valid": [
+    { "date": "...", "amount": 150.75, "ceiling": 200.0, "remanent": 74.25, "inKPeriod": true }
+  ],
+  "invalid": [...]
+}
 ```
 
-### 4. NPS Returns
-**POST** `/blackrock/challenge/v1/returns:nps`
+---
 
-Calculates projected NPS returns at **7.11% annual rate** with inflation adjustment and tax benefit computation using Indian tax slabs.
+#### 4️⃣ NPS Returns → `POST /returns:nps`
+
+Calculates projected National Pension Scheme returns:
+- **Rate:** 7.11% annual compound interest
+- **Inflation adjusted:** Returns divided by (1 + inflation)^years
+- **Tax benefit:** Deduction under Section 80CCD (min of invested, 10% income, ₹2L)
+- **Tax slabs:** 0-7L: 0%, 7-10L: 10%, 10-12L: 15%, 12-15L: 20%, 15L+: 30%
+- **Investment horizon:** max(60 - age, 5) years
 
 ```json
 // Request
 { "age": 30, "wage": 50000, "inflation": 6.0, "q": [...], "p": [...], "k": [...], "transactions": [...] }
 
 // Response
-{ "totalTransactionAmount": 150.75, "totalCeiling": 200.0, "savingsByDates": [...] }
+{
+  "totalTransactionAmount": 150.75,
+  "totalCeiling": 200.0,
+  "savingsByDates": [
+    { "start": "...", "end": "...", "amount": 49.25, "profit": 18.07, "taxBenefit": 4.93 }
+  ]
+}
 ```
 
-### 5. Index Fund Returns
-**POST** `/blackrock/challenge/v1/returns:index`
+---
 
-Calculates projected NIFTY 50 Index Fund returns at **14.49% annual rate** with inflation adjustment.
+#### 5️⃣ Index Fund Returns → `POST /returns:index`
 
-### 6. Performance Metrics
-**GET** `/blackrock/challenge/v1/performance`
+Calculates projected NIFTY 50 Index Fund returns:
+- **Rate:** 14.49% annual compound interest
+- **Inflation adjusted:** Same as NPS
+- **No tax benefit** (but higher market returns)
 
-Returns system uptime, heap memory usage (MB), and active thread count.
+Same request/response format as NPS.
+
+---
+
+### 🌟 Innovation Endpoints
+
+#### 6️⃣ Compare NPS vs Index → `POST /returns:compare`
+
+**The killer feature.** Side-by-side comparison with personalized recommendation based on:
+- **Age** → determines risk profile (Aggressive / Moderate / Conservative)
+- **Income** → higher earners benefit more from NPS tax deductions
+- **Returns** → actual projected numbers for both options
 
 ```json
-{ "time": "1970-01-01 00:00:15.234", "memory": "25.50", "threads": 18 }
+// Response (abbreviated)
+{
+  "totalTransactionAmount": 1246.25,
+  "totalInvestable": 148.75,
+  "npsTotalProfit": 54.57,
+  "npsTotalTaxBenefit": 0.0,
+  "npsEffectiveGain": 54.57,
+  "indexTotalProfit": 1352.0,
+  "indexEffectiveGain": 1352.0,
+  "recommendation": "Index Fund generates higher returns for your profile...",
+  "riskProfile": "Aggressive",
+  "suggestedNpsPercent": 30,
+  "suggestedIndexPercent": 70,
+  "reasoning": "At 30, you have 30 years till retirement..."
+}
 ```
 
-## Docker Image
+---
 
-- **Image name:** `blk-hacking-ind-abhishek-anand`
+#### 7️⃣ Transaction Summary → `POST /transactions:summary`
+
+Analyzes spending behavior and calculates an **Investment Readiness Score** (0-100):
+
+```json
+// Response
+{
+  "totalTransactions": 5,
+  "validTransactions": 4,
+  "totalSpent": 1246.25,
+  "averageSpend": 311.56,
+  "totalSavingsPotential": 153.75,
+  "annualSavingsProjection": 13837.56,
+  "investmentReadinessScore": 70,
+  "investmentReadinessLabel": "Good - Can start regular investments",
+  "tips": [
+    "You're in great shape! Consider splitting investments between NPS and Index Funds."
+  ]
+}
+```
+
+---
+
+#### 8️⃣ Health Check → `GET /health`
+
+Liveness probe for monitoring and container orchestration.
+
+```json
+{ "status": "UP", "service": "retirement-plan", "version": "1.0.0", "timestamp": 1771671086359 }
+```
+
+---
+
+#### 9️⃣ Performance Metrics → `GET /performance`
+
+System metrics: uptime, heap memory (MB), active threads.
+
+```json
+{ "time": "1970-01-01 00:01:11.716", "memory": "31.89", "threads": 16 }
+```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── main/java/com/blackrock/retirement/
+│   ├── controller/
+│   │   ├── TransactionController.java    # parse, validator, filter, summary
+│   │   ├── ReturnsController.java        # nps, index, compare
+│   │   └── PerformanceController.java    # performance, health
+│   ├── service/
+│   │   ├── TransactionService.java       # Expense → Transaction conversion
+│   │   ├── ValidationService.java        # Business rule validation
+│   │   ├── TemporalFilterService.java    # Q/P/K temporal constraint engine
+│   │   ├── InvestmentService.java        # NPS, Index, Compare calculations
+│   │   ├── SummaryService.java           # Spending insights & readiness score
+│   │   └── PerformanceService.java       # JMX system metrics
+│   ├── model/                            # Domain entities
+│   └── dto/                              # Request/Response DTOs
+└── test/java/                            # 36+ unit tests
+```
+
+## 🐳 Docker
+
+- **Image:** `blk-hacking-ind-abhishek-anand`
 - **Port:** `5477`
 - **Base:** Eclipse Temurin 17 Alpine (JRE)
 - **Size:** ~205 MB
 
-## Dependencies
+```bash
+docker run -d -p 5477:5477 blk-hacking-ind-abhishek-anand
+```
 
-| Dependency | Version | Purpose |
-|---|---|---|
-| spring-boot-starter-web | 3.2.3 | REST API framework |
-| spring-boot-starter-validation | 3.2.3 | Bean validation |
-| spring-boot-starter-test | 3.2.3 | Testing (JUnit 5) |
+---
 
-## Author
+## 👤 Author
 
 **Abhishek Anand**
+GitHub: [@Abhi7033](https://github.com/Abhi7033)
