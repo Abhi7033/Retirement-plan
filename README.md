@@ -62,12 +62,15 @@ cd Retirement-plan
 java -jar target/retirement-plan-1.0.0.jar
 ```
 
-### Option 2: Run with Docker
+### Option 2: Pull from Docker Hub
 ```bash
-# Build
-docker build -t blk-hacking-ind-abhishek-anand .
+docker pull abhishek703351/blk-hacking-ind-abhishek-anand
+docker run -d -p 5477:5477 abhishek703351/blk-hacking-ind-abhishek-anand
+```
 
-# Run
+### Option 3: Build Docker Image Locally
+```bash
+docker build -t blk-hacking-ind-abhishek-anand .
 docker run -d -p 5477:5477 blk-hacking-ind-abhishek-anand
 ```
 
