@@ -1,10 +1,8 @@
 package com.blackrock.retirement.controller;
 
-import com.blackrock.retirement.dto.ParseRequest;
-import com.blackrock.retirement.dto.ParseResponse;
-import com.blackrock.retirement.dto.ValidatorRequest;
-import com.blackrock.retirement.dto.ValidatorResponse;
+import com.blackrock.retirement.dto.*;
 import com.blackrock.retirement.model.Transaction;
+import com.blackrock.retirement.service.TemporalFilterService;
 import com.blackrock.retirement.service.TransactionService;
 import com.blackrock.retirement.service.ValidationService;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +19,14 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final ValidationService validationService;
+    private final TemporalFilterService temporalFilterService;
 
     public TransactionController(TransactionService transactionService,
-                                 ValidationService validationService) {
+                                 ValidationService validationService,
+                                 TemporalFilterService temporalFilterService) {
         this.transactionService = transactionService;
         this.validationService = validationService;
+        this.temporalFilterService = temporalFilterService;
     }
 
     /**
@@ -46,6 +47,24 @@ public class TransactionController {
     public ResponseEntity<ValidatorResponse> validateTransactions(@RequestBody ValidatorRequest request) {
         ValidationService.ValidationResult result = validationService
                 .validateTransactions(request.getWage(), request.getTransactions());
+
+        return ResponseEntity.ok(new ValidatorResponse(result.getValid(), result.getInvalid()));
+    }
+
+    /**
+     * POST /blackrock/challenge/v1/transactions:filter
+     * Applies temporal constraints (q, p, k periods) to filter and adjust transactions.
+     */
+    @PostMapping("/transactions:filter")
+    public ResponseEntity<ValidatorResponse> filterTransactions(@RequestBody FilterRequest request) {
+        TemporalFilterService.FilterResult result = temporalFilterService
+                .filterTransactions(
+                        request.getTransactions(),
+                        request.getQ(),
+                        request.getP(),
+                        request.getK(),
+                        request.getWage()
+                );
 
         return ResponseEntity.ok(new ValidatorResponse(result.getValid(), result.getInvalid()));
     }

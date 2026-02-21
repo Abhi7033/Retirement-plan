@@ -58,16 +58,6 @@ public class ValidationService {
             return "Amount exceeds maximum allowed value";
         }
 
-        // check ceiling consistency
-        if (txn.getCeiling() != null && txn.getAmount() != null && txn.getCeiling() < txn.getAmount()) {
-            return "Ceiling cannot be less than amount";
-        }
-
-        // check remanent is non-negative
-        if (txn.getRemanent() != null && txn.getRemanent() < 0) {
-            return "Remanent cannot be negative";
-        }
-
         return null; // valid
     }
 
