@@ -1,5 +1,6 @@
 package com.blackrock.retirement.service;
 
+import com.blackrock.retirement.dto.CompareResponse;
 import com.blackrock.retirement.dto.ReturnsResponse;
 import com.blackrock.retirement.model.*;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,139 @@ public class InvestmentService {
                                                   List<Transaction> transactions) {
         return calculateReturns(age, monthlyWage, inflation, qPeriods, pPeriods,
                 kPeriods, transactions, INDEX_RATE, false);
+    }
+
+    /**
+     * Compares NPS vs Index Fund returns side-by-side.
+     * Provides a recommendation based on age, income, and risk profile.
+     * Helps users make an informed decision about retirement investment strategy.
+     */
+    public CompareResponse compareReturns(int age, double monthlyWage, double inflation,
+                                           List<QPeriod> qPeriods, List<PPeriod> pPeriods,
+                                           List<KPeriod> kPeriods,
+                                           List<Transaction> transactions) {
+
+        ReturnsResponse npsResult = calculateNpsReturns(age, monthlyWage, inflation,
+                qPeriods, pPeriods, kPeriods, transactions);
+        ReturnsResponse indexResult = calculateIndexReturns(age, monthlyWage, inflation,
+                qPeriods, pPeriods, kPeriods, transactions);
+
+        CompareResponse response = new CompareResponse();
+        response.setTotalTransactionAmount(npsResult.getTotalTransactionAmount());
+        response.setTotalCeiling(npsResult.getTotalCeiling());
+
+        // calculate total investable (sum of remanent across k-periods)
+        double totalInvestable = 0;
+        if (npsResult.getSavingsByDates() != null) {
+            for (SavingsByDate s : npsResult.getSavingsByDates()) {
+                totalInvestable += (s.getAmount() != null) ? s.getAmount() : 0;
+            }
+        }
+        response.setTotalInvestable(roundToTwo(totalInvestable));
+
+        // NPS totals
+        response.setNpsSavings(npsResult.getSavingsByDates());
+        double npsTotalProfit = 0;
+        double npsTotalTaxBenefit = 0;
+        if (npsResult.getSavingsByDates() != null) {
+            for (SavingsByDate s : npsResult.getSavingsByDates()) {
+                npsTotalProfit += (s.getProfit() != null) ? s.getProfit() : 0;
+                npsTotalTaxBenefit += (s.getTaxBenefit() != null) ? s.getTaxBenefit() : 0;
+            }
+        }
+        response.setNpsTotalProfit(roundToTwo(npsTotalProfit));
+        response.setNpsTotalTaxBenefit(roundToTwo(npsTotalTaxBenefit));
+        response.setNpsEffectiveGain(roundToTwo(npsTotalProfit + npsTotalTaxBenefit));
+
+        // Index totals
+        response.setIndexSavings(indexResult.getSavingsByDates());
+        double indexTotalProfit = 0;
+        if (indexResult.getSavingsByDates() != null) {
+            for (SavingsByDate s : indexResult.getSavingsByDates()) {
+                indexTotalProfit += (s.getProfit() != null) ? s.getProfit() : 0;
+            }
+        }
+        response.setIndexTotalProfit(roundToTwo(indexTotalProfit));
+        response.setIndexEffectiveGain(roundToTwo(indexTotalProfit));
+
+        // generate recommendation
+        generateRecommendation(response, age, monthlyWage, npsTotalProfit, npsTotalTaxBenefit, indexTotalProfit);
+
+        return response;
+    }
+
+    /**
+     * Generates a personalized recommendation based on the user's profile.
+     * Considers age (risk tolerance), income (tax bracket), and return comparison.
+     */
+    private void generateRecommendation(CompareResponse response, int age, double monthlyWage,
+                                         double npsProfit, double npsTaxBenefit, double indexProfit) {
+
+        double annualIncome = monthlyWage * 12;
+        double npsEffective = npsProfit + npsTaxBenefit;
+        double indexEffective = indexProfit;
+
+        int npsPercent;
+        int indexPercent;
+        String riskProfile;
+        String reasoning;
+
+        if (age < 35) {
+            // young: higher risk tolerance, index-heavy
+            riskProfile = "Aggressive";
+            indexPercent = 70;
+            npsPercent = 30;
+            reasoning = "At " + age + ", you have " + (60 - age) + " years till retirement. "
+                    + "Your long time horizon allows for higher equity exposure through Index Funds (14.49% avg return). "
+                    + "NPS provides stable 7.11% returns with tax savings under Section 80CCD.";
+        } else if (age < 45) {
+            // mid-career: balanced approach
+            riskProfile = "Moderate";
+            indexPercent = 50;
+            npsPercent = 50;
+            reasoning = "At " + age + ", a balanced approach works best. "
+                    + "Split equally between NPS (guaranteed returns + tax deduction up to ₹2L) "
+                    + "and Index Funds (higher growth potential). Adjust as you approach 50.";
+        } else if (age < 55) {
+            // approaching retirement: conservative tilt
+            riskProfile = "Conservative";
+            indexPercent = 30;
+            npsPercent = 70;
+            reasoning = "At " + age + ", capital preservation becomes important. "
+                    + "NPS offers stability and tax benefits. Keep some Index Fund exposure for inflation-beating returns.";
+        } else {
+            // near retirement: safety first
+            riskProfile = "Very Conservative";
+            indexPercent = 20;
+            npsPercent = 80;
+            reasoning = "At " + age + ", you're close to retirement. Prioritize NPS for guaranteed returns "
+                    + "and maximum tax benefits. Minimal Index Fund allocation for liquidity.";
+        }
+
+        // adjust based on income bracket (high earners benefit more from NPS tax deduction)
+        if (annualIncome > 1500000) {
+            npsPercent = Math.min(npsPercent + 10, 90);
+            indexPercent = 100 - npsPercent;
+            reasoning += " Your income is in the 30% tax bracket - NPS tax deduction is highly valuable.";
+        }
+
+        // final recommendation
+        String recommendation;
+        if (npsEffective > indexEffective) {
+            recommendation = "NPS is more beneficial for your profile (effective gain: ₹"
+                    + roundToTwo(npsEffective) + " vs ₹" + roundToTwo(indexEffective)
+                    + "). The tax benefit makes NPS the winner despite lower market returns.";
+        } else {
+            recommendation = "Index Fund generates higher returns for your profile (₹"
+                    + roundToTwo(indexEffective) + " vs ₹" + roundToTwo(npsEffective)
+                    + "). However, consider NPS allocation for tax savings.";
+        }
+
+        response.setRecommendation(recommendation);
+        response.setRiskProfile(riskProfile);
+        response.setSuggestedNpsPercent(npsPercent);
+        response.setSuggestedIndexPercent(indexPercent);
+        response.setReasoning(reasoning);
     }
 
     private ReturnsResponse calculateReturns(int age, double monthlyWage, double inflation,
