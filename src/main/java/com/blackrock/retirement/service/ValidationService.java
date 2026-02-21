@@ -58,6 +58,24 @@ public class ValidationService {
             return "Amount exceeds maximum allowed value";
         }
 
+        // real-world: ceiling must be >= amount (can't round down)
+        if (txn.getCeiling() != null && txn.getAmount() != null && txn.getCeiling() < txn.getAmount()) {
+            return "Ceiling cannot be less than amount";
+        }
+
+        // real-world: ceiling must be a valid multiple of 100
+        if (txn.getCeiling() != null && txn.getCeiling() % 100 != 0) {
+            return "Ceiling must be a multiple of 100";
+        }
+
+        // real-world: remanent must match ceiling - amount
+        if (txn.getCeiling() != null && txn.getAmount() != null && txn.getRemanent() != null) {
+            double expectedRemanent = txn.getCeiling() - txn.getAmount();
+            if (Math.abs(txn.getRemanent() - expectedRemanent) > 0.01) {
+                return "Remanent does not match ceiling minus amount";
+            }
+        }
+
         return null; // valid
     }
 

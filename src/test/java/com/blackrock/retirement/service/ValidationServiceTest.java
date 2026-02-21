@@ -107,6 +107,60 @@ class ValidationServiceTest {
     }
 
     @Test
+    @DisplayName("Should reject ceiling less than amount - real world validation")
+    void testCeilingLessThanAmount() {
+        Transaction txn = new Transaction("2024-01-15 10:30:00", 2000.0, 300.0, 50.0);
+
+        ValidationService.ValidationResult result =
+                service.validateTransactions(50000, Collections.singletonList(txn));
+
+        assertTrue(result.getValid().isEmpty());
+        assertEquals(1, result.getInvalid().size());
+        assertEquals("Ceiling cannot be less than amount", result.getInvalid().get(0).getMessage());
+    }
+
+    @Test
+    @DisplayName("Should reject ceiling that is not a multiple of 100")
+    void testCeilingNotMultipleOf100() {
+        Transaction txn = new Transaction("2024-01-15 10:30:00", 150.0, 250.0, 100.0);
+
+        ValidationService.ValidationResult result =
+                service.validateTransactions(50000, Collections.singletonList(txn));
+
+        assertTrue(result.getValid().isEmpty());
+        assertEquals(1, result.getInvalid().size());
+        assertEquals("Ceiling must be a multiple of 100", result.getInvalid().get(0).getMessage());
+    }
+
+    @Test
+    @DisplayName("Should reject when remanent does not match ceiling - amount")
+    void testRemanentMismatch() {
+        Transaction txn = new Transaction("2024-01-15 10:30:00", 150.0, 200.0, 99.0);
+
+        ValidationService.ValidationResult result =
+                service.validateTransactions(50000, Collections.singletonList(txn));
+
+        assertTrue(result.getValid().isEmpty());
+        assertEquals(1, result.getInvalid().size());
+        assertEquals("Remanent does not match ceiling minus amount", result.getInvalid().get(0).getMessage());
+    }
+
+    @Test
+    @DisplayName("Hackathon test: all 4 transactions should be invalid in real world")
+    void testHackathonValidatorInput() {
+        Transaction t1 = new Transaction("2023-01-15 10:30:00", 2000.0, 300.0, 50.0);
+        Transaction t2 = new Transaction("2023-03-20 14:45:00", 3500.0, 400.0, 70.0);
+        Transaction t3 = new Transaction("2023-06-10 09:15:00", 1500.0, 200.0, 30.0);
+        Transaction t4 = new Transaction("2023-07-10 09:15:00", -250.0, 200.0, 30.0);
+
+        ValidationService.ValidationResult result =
+                service.validateTransactions(50000, Arrays.asList(t1, t2, t3, t4));
+
+        assertTrue(result.getValid().isEmpty(), "All transactions should be invalid");
+        assertEquals(4, result.getInvalid().size());
+    }
+
+    @Test
     @DisplayName("First occurrence of duplicate should be valid, second invalid")
     void testDuplicateOrdering() {
         Transaction txn1 = new Transaction("2024-01-15 10:30:00", 150.0, 200.0, 50.0);
