@@ -2,6 +2,7 @@ package com.blackrock.retirement.controller;
 
 import com.blackrock.retirement.dto.*;
 import com.blackrock.retirement.model.Transaction;
+import com.blackrock.retirement.service.SummaryService;
 import com.blackrock.retirement.service.TemporalFilterService;
 import com.blackrock.retirement.service.TransactionService;
 import com.blackrock.retirement.service.ValidationService;
@@ -20,13 +21,16 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final ValidationService validationService;
     private final TemporalFilterService temporalFilterService;
+    private final SummaryService summaryService;
 
     public TransactionController(TransactionService transactionService,
                                  ValidationService validationService,
-                                 TemporalFilterService temporalFilterService) {
+                                 TemporalFilterService temporalFilterService,
+                                 SummaryService summaryService) {
         this.transactionService = transactionService;
         this.validationService = validationService;
         this.temporalFilterService = temporalFilterService;
+        this.summaryService = summaryService;
     }
 
     /**
@@ -67,5 +71,16 @@ public class TransactionController {
                 );
 
         return ResponseEntity.ok(new ValidatorResponse(result.getValid(), result.getInvalid()));
+    }
+
+    /**
+     * POST /blackrock/challenge/v1/transactions:summary
+     * Analyzes spending patterns and provides savings insights with investment readiness score.
+     * Helps users understand their financial behavior before committing to a retirement plan.
+     */
+    @PostMapping("/transactions:summary")
+    public ResponseEntity<SummaryResponse> transactionSummary(@RequestBody ValidatorRequest request) {
+        SummaryResponse response = summaryService.analyzeSummary(request.getTransactions());
+        return ResponseEntity.ok(response);
     }
 }

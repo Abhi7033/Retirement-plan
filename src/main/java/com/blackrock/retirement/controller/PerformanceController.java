@@ -1,5 +1,6 @@
 package com.blackrock.retirement.controller;
 
+import com.blackrock.retirement.dto.HealthResponse;
 import com.blackrock.retirement.dto.PerformanceResponse;
 import com.blackrock.retirement.service.PerformanceService;
 import org.springframework.http.ResponseEntity;
@@ -28,5 +29,19 @@ public class PerformanceController {
         int threads = performanceService.getActiveThreadCount();
 
         return ResponseEntity.ok(new PerformanceResponse(time, memory, threads));
+    }
+
+    /**
+     * GET /blackrock/challenge/v1/health
+     * Simple liveness check - confirms the service is up and responsive.
+     */
+    @GetMapping("/health")
+    public ResponseEntity<HealthResponse> healthCheck() {
+        return ResponseEntity.ok(new HealthResponse(
+                "UP",
+                "retirement-plan",
+                "1.0.0",
+                System.currentTimeMillis()
+        ));
     }
 }

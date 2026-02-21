@@ -1,5 +1,6 @@
 package com.blackrock.retirement.controller;
 
+import com.blackrock.retirement.dto.CompareResponse;
 import com.blackrock.retirement.dto.ReturnsRequest;
 import com.blackrock.retirement.dto.ReturnsResponse;
 import com.blackrock.retirement.service.InvestmentService;
@@ -44,6 +45,25 @@ public class ReturnsController {
     @PostMapping("/returns:index")
     public ResponseEntity<ReturnsResponse> calculateIndexReturns(@RequestBody ReturnsRequest request) {
         ReturnsResponse response = investmentService.calculateIndexReturns(
+                request.getAge(),
+                request.getWage(),
+                request.getInflation(),
+                request.getQ(),
+                request.getP(),
+                request.getK(),
+                request.getTransactions()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /blackrock/challenge/v1/returns:compare
+     * Side-by-side NPS vs Index Fund comparison with personalized recommendation.
+     * Helps users choose the right investment strategy based on their age, income, and risk profile.
+     */
+    @PostMapping("/returns:compare")
+    public ResponseEntity<CompareResponse> compareReturns(@RequestBody ReturnsRequest request) {
+        CompareResponse response = investmentService.compareReturns(
                 request.getAge(),
                 request.getWage(),
                 request.getInflation(),
