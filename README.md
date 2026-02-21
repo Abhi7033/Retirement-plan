@@ -8,13 +8,11 @@ Built for the BlackRock Hackathon Challenge.
 
 ## Problem Statement
 
-Most people know they should save for retirement but lack clarity on:
-- How much they can realistically save from daily expenses
-- Where to invest -- NPS (stable + tax benefit) or Index Fund (higher growth)
-- What temporal rules affect their savings
-- Whether they are financially ready to start investing
+Retirement planning remains a critical challenge in emerging markets, where individual savings rates often fall short of long-term financial security needs. Most people understand the importance of saving but rarely act on it consistently -- the friction of deciding how much to save and where to invest stops them.
 
-This platform answers all of these by analyzing real transaction data and providing actionable, personalized recommendations.
+Behavioral economics research shows that automated savings mechanisms, particularly micro-savings through expense rounding, significantly improve accumulation rates by removing that decision friction. The idea is simple: every time you make a purchase, the system rounds up the expense to the nearest hundred and quietly sets aside the spare change for retirement. You spend 150 on coffee, the system saves 50. Over thousands of transactions, it adds up.
+
+This platform builds the technical infrastructure to operationalize that system at scale -- from parsing raw expenses, validating and filtering them through configurable business rules, to projecting long-term returns across NPS and Index Fund investment options.
 
 ---
 
@@ -113,16 +111,19 @@ Base URL: `http://localhost:5477/blackrock/challenge/v1`
 
 Converts raw expenses into investment-ready transactions. Rounds each expense up to the next 100 (ceiling) and calculates the spare change (remanent) that can be auto-invested.
 
-```json
-// Request
-{
-  "expenses": [
-    { "timestamp": "2024-02-15 12:30:45", "amount": 150.75 },
-    { "timestamp": "2024-03-10 09:00:00", "amount": 620.00 }
-  ]
-}
+```bash
+curl -X POST http://localhost:5477/blackrock/challenge/v1/transactions:parse \
+  -H "Content-Type: application/json" \
+  -d '{
+    "expenses": [
+      { "timestamp": "2024-02-15 12:30:45", "amount": 150.75 },
+      { "timestamp": "2024-03-10 09:00:00", "amount": 620.00 }
+    ]
+  }'
+```
 
-// Response -- seconds truncated, ceiling = next 100 multiple
+**Response:**
+```json
 {
   "transactions": [
     { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
@@ -143,12 +144,28 @@ Applies real-world business rules to ensure data integrity:
 - Ceiling not a multiple of 100 -- rejected
 - Remanent != ceiling - amount -- rejected (data inconsistency)
 
-```json
-// Request
-{ "wage": 50000, "transactions": [...] }
+```bash
+curl -X POST http://localhost:5477/blackrock/challenge/v1/transactions:validator \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wage": 50000,
+    "transactions": [
+      { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
+      { "date": "2024-03-10 09:00:00", "amount": -250.0, "ceiling": 300.0, "remanent": 50.0 }
+    ]
+  }'
+```
 
-// Response
-{ "valid": [...], "invalid": [{ "date": "...", "amount": -50, "message": "Negative amounts are not allowed" }] }
+**Response:**
+```json
+{
+  "valid": [
+    { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 }
+  ],
+  "invalid": [
+    { "date": "2024-03-10 09:00:00", "amount": -250.0, "ceiling": 300.0, "remanent": 50.0, "message": "Negative amounts are not allowed" }
+  ]
+}
 ```
 
 ---
@@ -162,22 +179,29 @@ Applies time-based investment rules:
 
 Transactions with `remanent = 0` (e.g., from a q-period with `fixed: 0`) are kept as valid -- they represent real transactions with zero savings.
 
-```json
-// Request
-{
-  "wage": 50000,
-  "q": [{ "fixed": 0, "start": "2024-02-01 00:00", "end": "2024-03-01 00:00" }],
-  "p": [{ "extra": 25, "start": "2024-01-01 00:00", "end": "2024-04-01 00:00" }],
-  "k": [{ "start": "2024-01-01 00:00", "end": "2024-06-01 00:00" }],
-  "transactions": [...]
-}
+```bash
+curl -X POST http://localhost:5477/blackrock/challenge/v1/transactions:filter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wage": 50000,
+    "q": [{ "fixed": 0, "start": "2024-02-01 00:00", "end": "2024-03-01 00:00" }],
+    "p": [{ "extra": 25, "start": "2024-01-01 00:00", "end": "2024-04-01 00:00" }],
+    "k": [{ "start": "2024-01-01 00:00", "end": "2024-06-01 00:00" }],
+    "transactions": [
+      { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
+      { "date": "2024-03-10 09:00:00", "amount": 620.0, "ceiling": 700.0, "remanent": 80.0 }
+    ]
+  }'
+```
 
-// Response -- includes inKPeriod flag for grouping
+**Response:**
+```json
 {
   "valid": [
-    { "date": "...", "amount": 150.75, "ceiling": 200.0, "remanent": 74.25, "inKPeriod": true }
+    { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 25.0, "inKPeriod": true },
+    { "date": "2024-03-10 09:00:00", "amount": 620.0, "ceiling": 700.0, "remanent": 105.0, "inKPeriod": true }
   ],
-  "invalid": [...]
+  "invalid": []
 }
 ```
 
@@ -192,16 +216,27 @@ Calculates projected National Pension Scheme returns:
 - Tax slabs: 0-7L: 0%, 7-10L: 10%, 10-12L: 15%, 12-15L: 20%, 15L+: 30%
 - Investment horizon: max(60 - age, 5) years
 
-```json
-// Request
-{ "age": 30, "wage": 50000, "inflation": 6.0, "q": [...], "p": [...], "k": [...], "transactions": [...] }
+```bash
+curl -X POST http://localhost:5477/blackrock/challenge/v1/returns:nps \
+  -H "Content-Type: application/json" \
+  -d '{
+    "age": 30, "wage": 50000, "inflation": 6.0,
+    "q": [], "p": [],
+    "k": [{ "start": "2024-01-01 00:00", "end": "2024-06-01 00:00" }],
+    "transactions": [
+      { "date": "2024-02-15 12:30:00", "amount": 150.75, "ceiling": 200.0, "remanent": 49.25 },
+      { "date": "2024-03-10 09:00:00", "amount": 620.0, "ceiling": 700.0, "remanent": 80.0 }
+    ]
+  }'
+```
 
-// Response
+**Response:**
+```json
 {
-  "totalTransactionAmount": 150.75,
-  "totalCeiling": 200.0,
+  "totalTransactionAmount": 770.75,
+  "totalCeiling": 900.0,
   "savingsByDates": [
-    { "start": "...", "end": "...", "amount": 49.25, "profit": 18.07, "taxBenefit": 4.93 }
+    { "start": "2024-01-01 00:00", "end": "2024-06-01 00:00", "amount": 129.25, "profit": 47.42, "taxBenefit": 0.0 }
   ]
 }
 ```
@@ -228,20 +263,23 @@ Side-by-side comparison with personalized recommendation based on:
 - **Income** -- higher earners benefit more from NPS tax deductions
 - **Returns** -- actual projected numbers for both options
 
+Uses the same request format as NPS/Index.
+
+**Response:**
 ```json
-// Response (abbreviated)
 {
-  "totalTransactionAmount": 1246.25,
-  "totalInvestable": 148.75,
-  "npsTotalProfit": 54.57,
+  "totalTransactionAmount": 770.75,
+  "totalCeiling": 900.0,
+  "totalInvestable": 129.25,
+  "npsTotalProfit": 47.42,
   "npsTotalTaxBenefit": 0.0,
-  "npsEffectiveGain": 54.57,
-  "indexTotalProfit": 1352.0,
-  "indexEffectiveGain": 1352.0,
-  "recommendation": "Index Fund generates higher returns for your profile...",
+  "npsEffectiveGain": 47.42,
+  "indexTotalProfit": 1174.76,
+  "indexEffectiveGain": 1174.76,
   "riskProfile": "Aggressive",
   "suggestedNpsPercent": 30,
   "suggestedIndexPercent": 70,
+  "recommendation": "Index Fund generates higher returns for your profile...",
   "reasoning": "At 30, you have 30 years till retirement..."
 }
 ```
@@ -250,22 +288,27 @@ Side-by-side comparison with personalized recommendation based on:
 
 #### 7. Transaction Summary -- POST /transactions:summary
 
-Analyzes spending behavior and calculates an Investment Readiness Score (0-100):
+Analyzes spending behavior and calculates an Investment Readiness Score (0 to 100). Uses the same request format as the validator.
 
+**Response:**
 ```json
-// Response
 {
-  "totalTransactions": 5,
-  "validTransactions": 4,
-  "totalSpent": 1246.25,
-  "averageSpend": 311.56,
-  "totalSavingsPotential": 153.75,
-  "annualSavingsProjection": 13837.56,
-  "investmentReadinessScore": 70,
+  "totalTransactions": 2,
+  "validTransactions": 2,
+  "invalidTransactions": 0,
+  "totalSpent": 770.75,
+  "averageSpend": 385.38,
+  "highestSpend": 620.0,
+  "lowestSpend": 150.75,
+  "highestSpendDate": "2024-03-10 09:00:00",
+  "lowestSpendDate": "2024-02-15 12:30:00",
+  "totalSavingsPotential": 129.25,
+  "averageSavingsPerTransaction": 64.63,
+  "monthlySavingsEstimate": 1938.75,
+  "annualSavingsProjection": 23265.0,
+  "investmentReadinessScore": 61,
   "investmentReadinessLabel": "Good - Can start regular investments",
-  "tips": [
-    "Consider splitting investments between NPS and Index Funds."
-  ]
+  "tips": ["Start by tracking all your expenses. Every rupee saved is a rupee invested."]
 }
 ```
 
